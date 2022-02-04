@@ -45,7 +45,9 @@ class Trainer():
             timer_model.tic()
 
             self.optimizer.zero_grad()
-            sr = self.model(lr, 0)
+            aug_img = self.attack_pgd(lr, hr, epsilon=0.01/255, alpha=1/255, attack_iters=10)
+            # sr = self.model(lr, 0)
+            sr = self.model(aug_img, 0)
             loss = self.loss(sr, hr)
             loss.backward()
             if self.args.gclip > 0:
@@ -144,3 +146,36 @@ class Trainer():
             epoch = self.optimizer.get_last_epoch() + 1
             return epoch >= self.args.epochs
 
+    def attack_pgd(self, lr, hr, epsilon, alpha, attack_iters):
+        # cifar10_mean = (0.4914, 0.4822, 0.4465)
+        # cifar10_std = (0.2471, 0.2435, 0.2616)
+
+        # mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
+        # std = torch.tensor(cifar10_std).view(3,1,1).cuda()
+
+        # upper_limit = ((1 - mu)/ std)
+        # lower_limit = ((0 - mu)/ std)
+        # epsilon = epsilon / std
+        # alpha = alpha / std
+        # for zz in range(restarts):
+        # for i in range(len(epsilon)):
+        #     delta[:, i, :, :].uniform_(-epsilon[i][0][0].item(), epsilon[i][0][0].item())
+        aug_img = lr.clone().detach()
+        aug_img = aug_img + torch.empty_like(aug_img).uniform_(-epsilon, epsilon).cuda()
+        # delta.data = self.clamp(delta, lower_limit - lr, upper_limit - lr)
+        aug_img = torch.clamp(aug_img, min=0, max=1).detach()
+
+        for _ in range(attack_iters):
+            aug_img.requires_grad = True
+            sr = self.model(aug_img, 0)
+            loss = self.loss(sr, hr)
+            # loss.backward()
+            grad = torch.autograd.grad(loss, aug_img, retain_graph=False, create_graph=False)[0]
+            aug_img = aug_img.detach() + alpha * grad.sign()
+            delta = torch.clamp(aug_img - lr, min=-epsilon, max=epsilon)
+            aug_img = torch.clamp(lr + delta, min=0, max=1).detach()
+          
+        return aug_img
+
+    def clamp(X, lower_limit, upper_limit):
+        return torch.max(torch.min(X, upper_limit), lower_limit)
