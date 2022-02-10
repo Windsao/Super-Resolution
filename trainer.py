@@ -9,7 +9,7 @@ import torch.nn.utils as utils
 from tqdm import tqdm
 
 class Trainer():
-    def __init__(self, args, loader, my_model, my_loss, ckp):
+    def __init__(self, args, loader, my_model, my_loss, ckp, teacher=None):
         self.args = args
         self.scale = args.scale
 
@@ -17,6 +17,7 @@ class Trainer():
         self.loader_train = loader.loader_train
         self.loader_test = loader.loader_test
         self.model = my_model
+        self.teacher = teacher
         self.loss = my_loss
         self.optimizer = utility.make_optimizer(args, self.model)
 
@@ -53,7 +54,6 @@ class Trainer():
                 sr = self.model(lr, 0)
                 aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
                 aug_sr = self.model(aug_img, 0)
-            #loss = self.loss(sr, hr)
                 loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(aug_sr,hr)
             
             '''
@@ -65,6 +65,65 @@ class Trainer():
             
             loss = self.loss(sr, hr)
             '''
+
+            loss.backward()
+            if self.args.gclip > 0:
+                utils.clip_grad_value_(
+                    self.model.parameters(),
+                    self.args.gclip
+                )
+            self.optimizer.step()
+
+            timer_model.hold()
+
+            if (batch + 1) % self.args.print_every == 0:
+                self.ckp.write_log('[{}/{}]\t{}\t{:.1f}+{:.1f}s'.format(
+                    (batch + 1) * self.args.batch_size,
+                    len(self.loader_train.dataset),
+                    self.loss.display_loss(batch),
+                    timer_model.release(),
+                    timer_data.release()))
+
+            timer_data.tic()
+
+        self.loss.end_log(len(self.loader_train))
+        self.error_last = self.loss.log[-1, -1]
+        self.optimizer.schedule()
+
+    def distillation(self):
+        self.loss.step()
+        epoch = self.optimizer.get_last_epoch() + 1
+        lr = self.optimizer.get_lr()
+
+        self.ckp.write_log(
+            '[Epoch {}]\tLearning rate: {:.2e}'.format(epoch, Decimal(lr))
+        )
+        self.loss.start_log()
+        self.model.train()
+
+        timer_data, timer_model = utility.timer(), utility.timer()
+        # TEMP
+        self.loader_train.dataset.set_scale(0)
+        
+        for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            lr, hr = self.prepare(lr, hr)
+            timer_data.hold()
+            timer_model.tic()
+
+            self.optimizer.zero_grad()
+            '''
+            if epoch < self.args.start_aug:
+                sr = self.model(lr, 0)
+                loss = self.loss(sr, hr)
+            else:
+                sr = self.model(lr, 0)
+                aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
+                aug_sr = self.model(aug_img, 0)
+                loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(aug_sr,hr)
+            '''
+            t_sr = self.teacher(lr, 0)
+            sr = self.model(lr, 0)
+            loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(sr,t_sr)
 
             loss.backward()
             if self.args.gclip > 0:

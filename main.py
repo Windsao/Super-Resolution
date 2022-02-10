@@ -19,12 +19,20 @@ def main():
         t.test()
     else:
         if checkpoint.ok:
+            if args.distil:
+                _teacher = model.Model(args, checkpoint)
+                _teacher.load_state_dict(torch.load('/home/sw99/experiment/experiment/alpha_0.5_6/model/model_best.pt'))
+                exit()
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
+            
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
-            t = Trainer(args, loader, _model, _loss, checkpoint)
+            t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
             while not t.terminate():
-                t.train()
+                if args.distil:
+                    t.distillation()
+                else:
+                    t.train()
                 t.test()
 
             checkpoint.done()

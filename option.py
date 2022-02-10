@@ -21,6 +21,9 @@ parser.add_argument('--seed', type=int, default=1,
 # Data specifications
 parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
                     help='dataset directory')
+# parser.add_argument('--dir_data', type=str, default='/data1/',
+#                     help='dataset directory')
+
 parser.add_argument('--dir_demo', type=str, default='../test',
                     help='demo image directory')
 parser.add_argument('--data_train', type=str, default='DIV2K',
@@ -149,6 +152,8 @@ parser.add_argument('--start_aug', type=int, default=0)
 parser.add_argument('--eps', type=float, default=1)
 parser.add_argument('--alpha', type=float, default=1)
 parser.add_argument('--iters', type=int, default=1)
+
+parser.add_argument('--distil', action='store_true')
 
 args = parser.parse_args()
 template.set_template(args)
