@@ -1,7 +1,0 @@
-#HIP_VISIBLE_DEVICES=$1 python main.py --model EDSR --scale 2 --patch_size 96 --save debug_psnr_$1 --reset > res_$1.txt 2>&1 &
-HIP_VISIBLE_DEVICES=$1 python main.py --model EDSR --scale 2 --patch_size 96 --save baseline_edsr_x2 --reset > res_$1.txt 2>&1 &
-#HIP_VISIBLE_DEVICES=0,1,2,3 python main.py --model EDSR --scale 2 --save edsr_x2 --n_resblocks 32 --n_feats 256 --batch_size 128 --res_scale 0.1 --reset
-#HIP_VISIBLE_DEVICES=$1,$2 python main.py --model EDSR --scale 2 --save adv_edsr_x2 --n_resblocks 32 --n_feats 256 --res_scale 0.1 --reset > adv_$1.txt 2>&1 &
-#HIP_VISIBLE_DEVICES=0,1,2,3,4 python main.py --model EDSR --scale 2 --save test --n_resblocks 32 --n_feats 256 --res_scale 0.1 --reset
-#python main.py --model EDSR --scale 2 --save adv_edsr_x2 --n_resblocks 32 --n_feats 256 --res_scale 0.1 --reset > paper_$1.txt 2>&1 &
-#HIP_VISIBLE_DEVICES=$1 python main.py --model EDSR --scale 2 --patch_size 96 --save test --reset 
