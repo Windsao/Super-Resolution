@@ -39,16 +39,33 @@ class Trainer():
         timer_data, timer_model = utility.timer(), utility.timer()
         # TEMP
         self.loader_train.dataset.set_scale(0)
+        
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
 
             self.optimizer.zero_grad()
-            aug_img = self.attack_pgd(lr, hr, epsilon=0.01/255, alpha=1/255, attack_iters=10)
-            # sr = self.model(lr, 0)
-            sr = self.model(aug_img, 0)
+            if epoch < self.args.start_aug:
+                sr = self.model(lr, 0)
+                loss = self.loss(sr, hr)
+            else:
+                sr = self.model(lr, 0)
+                aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
+                aug_sr = self.model(aug_img, 0)
+            #loss = self.loss(sr, hr)
+                loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(aug_sr,hr)
+            
+            '''
+            if epoch <= 100:
+                aug_img = self.attack_pgd(lr, hr, epsilon=1, alpha=1, attack_iters=1)
+                sr = self.model(aug_img, 0)
+            else:
+                sr = self.model(lr, 0)
+            
             loss = self.loss(sr, hr)
+            '''
+
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -163,8 +180,7 @@ class Trainer():
         aug_img = lr.clone().detach()
         aug_img = aug_img + torch.empty_like(aug_img).uniform_(-epsilon, epsilon).cuda()
         # delta.data = self.clamp(delta, lower_limit - lr, upper_limit - lr)
-        aug_img = torch.clamp(aug_img, min=0, max=1).detach()
-
+        aug_img = torch.clamp(aug_img, min=0, max=255).detach()
         for _ in range(attack_iters):
             aug_img.requires_grad = True
             sr = self.model(aug_img, 0)
@@ -173,7 +189,7 @@ class Trainer():
             grad = torch.autograd.grad(loss, aug_img, retain_graph=False, create_graph=False)[0]
             aug_img = aug_img.detach() + alpha * grad.sign()
             delta = torch.clamp(aug_img - lr, min=-epsilon, max=epsilon)
-            aug_img = torch.clamp(lr + delta, min=0, max=1).detach()
+            aug_img = torch.clamp(lr + delta, min=0, max=255).detach()
           
         return aug_img
 

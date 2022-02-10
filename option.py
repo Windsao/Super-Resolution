@@ -19,7 +19,7 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
 
 # Data specifications
-parser.add_argument('--dir_data', type=str, default='/data1',
+parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
                     help='dataset directory')
 parser.add_argument('--dir_demo', type=str, default='../test',
                     help='demo image directory')
@@ -27,7 +27,7 @@ parser.add_argument('--data_train', type=str, default='DIV2K',
                     help='train dataset name')
 parser.add_argument('--data_test', type=str, default='DIV2K',
                     help='test dataset name')
-parser.add_argument('--data_range', type=str, default='1-800/801-810',
+parser.add_argument('--data_range', type=str, default='1-800/801-900',
                     help='train/test data range')
 parser.add_argument('--ext', type=str, default='sep',
                     help='dataset file extension')
@@ -142,6 +142,13 @@ parser.add_argument('--save_results', action='store_true',
                     help='save output results')
 parser.add_argument('--save_gt', action='store_true',
                     help='save low-resolution and high-resolution images together')
+
+# Aug param
+parser.add_argument('--beta', type=float, default='0.2')
+parser.add_argument('--start_aug', type=int, default=0)
+parser.add_argument('--eps', type=float, default=1)
+parser.add_argument('--alpha', type=float, default=1)
+parser.add_argument('--iters', type=int, default=1)
 
 args = parser.parse_args()
 template.set_template(args)
