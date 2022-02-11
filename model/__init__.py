@@ -101,6 +101,10 @@ class Model(nn.Module):
 
         if load_from:
             self.model.load_state_dict(load_from, strict=False)
+    
+    def myload(self, ckpt_file):
+        checkpoint = torch.load(ckpt_file)
+        self.model.load_state_dict(checkpoint, strict=True)
 
     def forward_chop(self, *args, shave=10, min_size=160000):
         scale = 1 if self.input_large else self.scale[self.idx_scale]
