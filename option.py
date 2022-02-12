@@ -148,7 +148,7 @@ parser.add_argument('--save_gt', action='store_true',
 
 # Aug param
 parser.add_argument('--beta', type=float, default='0.2')
-parser.add_argument('--start_aug', type=int, default=0)
+parser.add_argument('--start_aug', type=int, default=300)
 parser.add_argument('--eps', type=float, default=1)
 parser.add_argument('--alpha', type=float, default=1)
 parser.add_argument('--iters', type=int, default=1)

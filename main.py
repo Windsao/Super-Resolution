@@ -21,13 +21,12 @@ def main():
         if checkpoint.ok:
             if args.distil:
                 _teacher = model.Model(args, checkpoint)
-                _teacher.load_state_dict(torch.load('../experiment/5_1_3/model/model_best.pt'), strict=False)
-                #_teacher.load_state_dict(torch.load('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt'), strict=False)
+                #_teacher.myload('../experiment/5_1_3/model/model_best.pt') 
+                _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt') 
             else:
                 _teacher = None
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
-            _model.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt') 
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
             while not t.terminate():

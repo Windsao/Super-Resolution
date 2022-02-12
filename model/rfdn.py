@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
-import block as B
+import model.block as B
 
 def make_model(args, parent=False):
-    model = RFDN()
+    model = RFDN(args)
     return model
 
 
 class RFDN(nn.Module):
-    def __init__(self, in_nc=3, nf=50, num_modules=4, out_nc=3, upscale=4):
+    def __init__(self, args, in_nc=3, nf=50, num_modules=4, out_nc=3, upscale=4):
         super(RFDN, self).__init__()
 
         self.fea_conv = B.conv_layer(in_nc, nf, kernel_size=3)
@@ -20,9 +20,9 @@ class RFDN(nn.Module):
         self.c = B.conv_block(nf * num_modules, nf, kernel_size=1, act_type='lrelu')
 
         self.LR_conv = B.conv_layer(nf, nf, kernel_size=3)
-
+       
         upsample_block = B.pixelshuffle_block
-        self.upsampler = upsample_block(nf, out_nc, upscale_factor=4)
+        self.upsampler = upsample_block(nf, out_nc, upscale_factor=args.scale[0])
         self.scale_idx = 0
 
 
