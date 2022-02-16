@@ -157,7 +157,7 @@ parser.add_argument('--distil', action='store_true')
 
 parser.add_argument('--cutmix', action='store_true')
 parser.add_argument('--prob', type=float, default=1.0)
-parser.add_argument('--aug_alpha', type=float, default=1.0)
+parser.add_argument('--aug_alpha', type=float, default=0.5)
 
 args = parser.parse_args()
 template.set_template(args)

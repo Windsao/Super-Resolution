@@ -6,6 +6,7 @@ import utility
 
 import torch
 import torch.nn.utils as utils
+import numpy as np
 from tqdm import tqdm
 
 class Trainer():
@@ -107,7 +108,7 @@ class Trainer():
         
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
             if self.args.cutmix:
-                lr, hr = cutmix(lr.clone(), hr.clone(), self.args.prob, self.args.aug_alpha)
+                lr, hr = self.cutmix(lr.clone(), hr.clone(), self.args.prob, self.args.aug_alpha)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
@@ -256,7 +257,7 @@ class Trainer():
     def clamp(X, lower_limit, upper_limit):
         return torch.max(torch.min(X, upper_limit), lower_limit)
     
-    def _cutmix(im2, prob=1.0, alpha=1.0):
+    def _cutmix(self, im2, prob=1.0, alpha=1.0):
         if alpha <= 0 or np.random.rand(1) >= prob:
             return None
 
@@ -275,8 +276,8 @@ class Trainer():
             "tcy": tcy, "tcx": tcx, "fcy": fcy, "fcx": fcx,
         }
 
-    def cutmix(im1, im2, prob=1.0, alpha=1.0):
-        c = _cutmix(im2, prob, alpha)
+    def cutmix(self, im1, im2, prob=1.0, alpha=1.0):
+        c = self._cutmix(im2, prob, alpha)
         if c is None:
             return im1, im2
 
