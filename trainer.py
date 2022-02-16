@@ -252,5 +252,48 @@ class Trainer():
           
         return aug_img
 
+    def loss_fn_kd(outputs, labels, teacher_outputs, args):
+        alpha = args.alpha
+        T = args.temperature
+        KD_loss = nn.KLDivLoss()(F.log_softmax(outputs/T, dim=1), F.softmax(teacher_outputs/T, dim=1)) * (alpha * T * T) + F.cross_entropy(outputs, labels) * (1. - alpha)
+
+        return KD_loss
+
     def clamp(X, lower_limit, upper_limit):
         return torch.max(torch.min(X, upper_limit), lower_limit)
+    
+    def _cutmix(im2, prob=1.0, alpha=1.0):
+        if alpha <= 0 or np.random.rand(1) >= prob:
+            return None
+
+        cut_ratio = np.random.randn() * 0.01 + alpha
+
+        h, w = im2.size(2), im2.size(3)
+        ch, cw = np.int(h*cut_ratio), np.int(w*cut_ratio)
+
+        fcy = np.random.randint(0, h-ch+1)
+        fcx = np.random.randint(0, w-cw+1)
+        tcy, tcx = fcy, fcx
+        rindex = torch.randperm(im2.size(0)).to(im2.device)
+
+        return {
+            "rindex": rindex, "ch": ch, "cw": cw,
+            "tcy": tcy, "tcx": tcx, "fcy": fcy, "fcx": fcx,
+        }
+
+    def cutmix(im1, im2, prob=1.0, alpha=1.0):
+        c = _cutmix(im2, prob, alpha)
+        if c is None:
+            return im1, im2
+
+        scale = im1.size(2) // im2.size(2)
+        rindex, ch, cw = c["rindex"], c["ch"], c["cw"]
+        tcy, tcx, fcy, fcx = c["tcy"], c["tcx"], c["fcy"], c["fcx"]
+
+        hch, hcw = ch*scale, cw*scale
+        hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale
+
+        im2[..., tcy:tcy+ch, tcx:tcx+cw] = im2[rindex, :, fcy:fcy+ch, fcx:fcx+cw]
+        im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[rindex, :, hfcy:hfcy+hch, hfcx:hfcx+hcw]
+
+        return im1, im2
