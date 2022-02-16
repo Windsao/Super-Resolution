@@ -106,24 +106,18 @@ class Trainer():
         self.loader_train.dataset.set_scale(0)
         
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            if self.args.cutmix:
+                lr, hr = cutmix(lr.clone(), hr.clone(), self.args.prob, self.args.aug_alpha)
+
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
 
             self.optimizer.zero_grad()
-            '''
-            if epoch < self.args.start_aug:
-                sr = self.model(lr, 0)
-                loss = self.loss(sr, hr)
-            else:
-                sr = self.model(lr, 0)
-                aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
-                aug_sr = self.model(aug_img, 0)
-                loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(aug_sr,hr)
-            '''
+
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
-            loss = (1 - self.args.beta) * self.loss(sr,hr) + self.args.beta * self.loss(sr,t_sr)
+            loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
 
             loss.backward()
             if self.args.gclip > 0:
