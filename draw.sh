@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model EDSR --scale 2 --patch_size 256 --save debug --reset --distil --cutmix
+# CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model EDSR --scale 2 --patch_size 192 --save debug --reset 

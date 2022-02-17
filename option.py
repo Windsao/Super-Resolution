@@ -19,10 +19,10 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed')
 
 # Data specifications
-parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
-                    help='dataset directory')
-# parser.add_argument('--dir_data', type=str, default='/data1/',
+# parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
 #                     help='dataset directory')
+parser.add_argument('--dir_data', type=str, default='/data1/',
+                    help='dataset directory')
 
 parser.add_argument('--dir_demo', type=str, default='../test',
                     help='demo image directory')
@@ -157,7 +157,7 @@ parser.add_argument('--distil', action='store_true')
 
 parser.add_argument('--cutmix', action='store_true')
 parser.add_argument('--prob', type=float, default=1.0)
-parser.add_argument('--aug_alpha', type=float, default=0.5)
+parser.add_argument('--aug_alpha', type=float, default=0.1)
 
 args = parser.parse_args()
 template.set_template(args)

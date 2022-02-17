@@ -8,6 +8,7 @@ import torch
 import torch.nn.utils as utils
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 class Trainer():
     def __init__(self, args, loader, my_model, my_loss, ckp, teacher=None):
@@ -108,7 +109,7 @@ class Trainer():
         
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
             if self.args.cutmix:
-                lr, hr = self.cutmix(lr.clone(), hr.clone(), self.args.prob, self.args.aug_alpha)
+                hr, lr = self.cutmix(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
@@ -118,6 +119,8 @@ class Trainer():
 
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
+            # self.drawImg(sr, hr, 0, 'cutmix_out')
+            # exit()
             loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
 
             loss.backward()
@@ -286,9 +289,26 @@ class Trainer():
         tcy, tcx, fcy, fcx = c["tcy"], c["tcx"], c["fcy"], c["fcx"]
 
         hch, hcw = ch*scale, cw*scale
-        hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale
-
+        hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale          
         im2[..., tcy:tcy+ch, tcx:tcx+cw] = im2[rindex, :, fcy:fcy+ch, fcx:fcx+cw]
         im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[rindex, :, hfcy:hfcy+hch, hfcx:hfcx+hcw]
 
         return im1, im2
+
+    def drawImg(self, im1, im2, index, name):
+        p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
+        p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
+        p1 = (p1 - p1.min()) / (p1.max() - p1.min())
+        p2 = (p2 - p2.min()) / (p2.max() - p2.min())
+        
+        fig, ax = plt.subplots(1, 2)
+        # plt.axis('off')
+        ax1 = plt.subplot(1,2,1)
+        ax1.axis('off')
+        ax1.set_title('Model Output')
+        ax1.imshow(p1)
+        ax2 = plt.subplot(1,2,2)
+        ax2.axis('off')
+        ax2.set_title('Ground Truth')
+        ax2.imshow(p2)
+        fig.savefig(name)

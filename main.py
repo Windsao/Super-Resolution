@@ -30,6 +30,7 @@ def main():
             args.model = temp
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
+            _model.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt') 
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
             while not t.terminate():
