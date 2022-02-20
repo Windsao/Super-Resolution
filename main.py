@@ -24,13 +24,13 @@ def main():
                 args.model = 'EDSR'
                 _teacher = model.Model(args, checkpoint)
                 #_teacher.myload('../experiment/5_1_3/model/model_best.pt') 
-                _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt') 
+                _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt')
+                _teacher.eval() 
             else:
                 _teacher = None
             args.model = temp
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
-            _model.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt') 
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
             while not t.terminate():
