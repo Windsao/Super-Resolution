@@ -19,16 +19,26 @@ def main():
         t.test()
     else:
         if checkpoint.ok:
-            temp = args.model
+            temp = {'model': args.model, 'n_resblocks': args.n_resblocks, 'n_feats':args.n_feats, 'res_scale': args.res_scale}
             if args.distil:
                 args.model = 'EDSR'
-                _teacher = model.Model(args, checkpoint)
-                #_teacher.myload('../experiment/5_1_3/model/model_best.pt') 
-                _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt')
+                if args.teacher_model == 'EDSR_paper':
+                    args.n_resblocks = 32
+                    args.n_feats = 256 
+                    args.res_scale = 0.1
+                    _teacher = model.Model(args, checkpoint)
+                    _teacher.myload('../SR_ckpt/EDSR_x4.pt')
+                else:
+                    _teacher = model.Model(args, checkpoint)
+                    # _teacher.myload('../experiment/5_1_3/model/model_best.pt') 
+                    _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt')
                 _teacher.eval() 
             else:
                 _teacher = None
-            args.model = temp
+            args.model = temp['model']
+            args.n_resblocks = temp['n_resblocks']
+            args.n_feats = temp['n_feats']
+            args.res_scale = temp['res_scale']
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None

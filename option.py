@@ -158,6 +158,7 @@ parser.add_argument('--distil', action='store_true')
 parser.add_argument('--cutmix', action='store_true')
 parser.add_argument('--prob', type=float, default=1.0)
 parser.add_argument('--aug_alpha', type=float, default=0.1)
+parser.add_argument('--teacher_model', type=str, default='EDSR_paper')
 
 args = parser.parse_args()
 template.set_template(args)
