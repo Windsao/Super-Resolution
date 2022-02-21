@@ -5,9 +5,9 @@
 #HIP_VISIBLE_DEVICES=$1 python main.py --model EDSR --scale 2 --patch_size 96 --beta $2 --save distil_base_$2 --reset --distil > test_$1.txt 2>&1 &
 
 #HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 2 --patch_size 64 --save debug --reset --distil --cutmix
-#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 3 --patch_size 192 --save baseline2_rfdn_x3 --reset > test_$1.txt 2>&1 &
-HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save distil_EDSRMin_rfdn_x4_$2 --reset --distil --teacher_model 'EDSR' > test_$1.txt 2>&1 &
-#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save cutmix0.1_rfdn_x4_$2 --reset --distil --cutmix --aug_alpha 0.1 > test_$1.txt 2>&1 &
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --save baseline2_rfdn_x4_500 --epochs 500 --reset > test_$1.txt 2>&1 &
+HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save distil_EDSR_rfdn_x4_500_$2 --epochs 500 --reset --distil --teacher_model 'EDSR_paper' > test_$1.txt 2>&1 &
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSR_c0.1_rfdn_x4_$2 --reset --distil --cutmix --teacher_model 'EDSR_paper' --aug_alpha 0.1 > test_$1.txt 2>&1 &
 
 #HIP_VISIBLE_DEVICES=$1,$2 python main.py --model EDSR --scale 2 --save adv_edsr_x2 --n_resblocks 32 --n_feats 256 --res_scale 0.1 --reset > adv_$1.txt 2>&1 &
 #HIP_VISIBLE_DEVICES=0,1,2,3,4 python main.py --model EDSR --scale 2 --save test --n_resblocks 32 --n_feats 256 --res_scale 0.1 --reset
