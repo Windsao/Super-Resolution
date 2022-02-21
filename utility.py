@@ -120,7 +120,7 @@ class checkpoint():
             plt.xlabel('Epochs')
             plt.ylabel('PSNR')
             plt.grid(True)
-            plt.savefig(self.get_path('test_{}.pdf'.format(d)))
+            plt.savefig(self.get_path('test_{}.png'.format(d)))
             plt.close(fig)
 
     def begin_background(self):
