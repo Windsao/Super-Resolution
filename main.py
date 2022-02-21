@@ -31,7 +31,7 @@ def main():
                 else:
                     _teacher = model.Model(args, checkpoint)
                     # _teacher.myload('../experiment/5_1_3/model/model_best.pt') 
-                    _teacher.myload('../experiment/baseline_edsr_x2_100_vaild/model/model_best.pt')
+                    _teacher.myload('../experiment/baseline2_EDSR_x4/model/model_best.pt')
                 _teacher.eval() 
             else:
                 _teacher = None
