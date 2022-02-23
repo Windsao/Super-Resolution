@@ -130,8 +130,8 @@ class Trainer():
 
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
-            self.drawImg(lr, hr, 1, 'mixup_out')
-            exit()
+            #self.drawImg(lr, hr, 1, 'mixup_out')
+            #exit()
             loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
 
             loss.backward()
