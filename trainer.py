@@ -44,6 +44,13 @@ class Trainer():
         self.loader_train.dataset.set_scale(0)
         
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            if self.args.data_aug == 'cutmix':
+                hr, lr = self.cutmix(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha)
+            elif self.args.data_aug == 'mixup':
+                hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
+            elif self.args.data_aug == 'cutmixup':
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
+
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
@@ -108,8 +115,12 @@ class Trainer():
         self.loader_train.dataset.set_scale(0)
         
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
-            if self.args.cutmix:
+            if self.args.data_aug == 'cutmix':
                 hr, lr = self.cutmix(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha)
+            elif self.args.data_aug == 'mixup':
+                hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
+            elif self.args.data_aug == 'cutmixup':
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
@@ -119,8 +130,8 @@ class Trainer():
 
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
-            # self.drawImg(sr, hr, 0, 'cutmix_out')
-            # exit()
+            self.drawImg(lr, hr, 1, 'mixup_out')
+            exit()
             loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
 
             loss.backward()
@@ -221,19 +232,6 @@ class Trainer():
             return epoch >= self.args.epochs
 
     def attack_pgd(self, lr, hr, epsilon, alpha, attack_iters):
-        # cifar10_mean = (0.4914, 0.4822, 0.4465)
-        # cifar10_std = (0.2471, 0.2435, 0.2616)
-
-        # mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
-        # std = torch.tensor(cifar10_std).view(3,1,1).cuda()
-
-        # upper_limit = ((1 - mu)/ std)
-        # lower_limit = ((0 - mu)/ std)
-        # epsilon = epsilon / std
-        # alpha = alpha / std
-        # for zz in range(restarts):
-        # for i in range(len(epsilon)):
-        #     delta[:, i, :, :].uniform_(-epsilon[i][0][0].item(), epsilon[i][0][0].item())
         aug_img = lr.clone().detach()
         aug_img = aug_img + torch.empty_like(aug_img).uniform_(-epsilon, epsilon).cuda()
         # delta.data = self.clamp(delta, lower_limit - lr, upper_limit - lr)
@@ -259,7 +257,18 @@ class Trainer():
 
     def clamp(X, lower_limit, upper_limit):
         return torch.max(torch.min(X, upper_limit), lower_limit)
-    
+
+    def mixup(self, im1, im2, prob=1.0, alpha=1.2):
+        if alpha <= 0 or np.random.rand(1) >= prob:
+            return im1, im2
+
+        v = np.random.beta(alpha, alpha)
+        r_index = torch.randperm(im1.size(0)).to(im2.device)
+
+        im1 = v * im1 + (1-v) * im1[r_index, :]
+        im2 = v * im2 + (1-v) * im2[r_index, :]
+        return im1, im2
+
     def _cutmix(self, im2, prob=1.0, alpha=1.0):
         if alpha <= 0 or np.random.rand(1) >= prob:
             return None
@@ -292,6 +301,43 @@ class Trainer():
         hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale          
         im2[..., tcy:tcy+ch, tcx:tcx+cw] = im2[rindex, :, fcy:fcy+ch, fcx:fcx+cw]
         im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[rindex, :, hfcy:hfcy+hch, hfcx:hfcx+hcw]
+
+        return im1, im2
+
+    
+    def cutmixup(
+        self, im1, im2,
+        mixup_prob=1.0, mixup_alpha=1.0,
+        cutmix_prob=1.0, cutmix_alpha=1.0
+    ):
+        c = self._cutmix(im2, cutmix_prob, cutmix_alpha)
+        if c is None:
+            return im1, im2 
+
+        scale = im1.size(2) // im2.size(2)
+        rindex, ch, cw = c["rindex"], c["ch"], c["cw"]
+        tcy, tcx, fcy, fcx = c["tcy"], c["tcx"], c["fcy"], c["fcx"]
+
+        hch, hcw = ch*scale, cw*scale
+        hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale
+
+        v = np.random.beta(mixup_alpha, mixup_alpha)
+        if mixup_alpha <= 0 or np.random.rand(1) >= mixup_prob:
+            im2_aug = im2[rindex, :]
+            im1_aug = im1[rindex, :]
+
+        else:
+            im2_aug = v * im2 + (1-v) * im2[rindex, :]
+            im1_aug = v * im1 + (1-v) * im1[rindex, :]
+
+        # apply mixup to inside or outside
+        if np.random.random() > 0.5:
+            im2[..., tcy:tcy+ch, tcx:tcx+cw] = im2_aug[..., fcy:fcy+ch, fcx:fcx+cw]
+            im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1_aug[..., hfcy:hfcy+hch, hfcx:hfcx+hcw]
+        else:
+            im2_aug[..., tcy:tcy+ch, tcx:tcx+cw] = im2[..., fcy:fcy+ch, fcx:fcx+cw]
+            im1_aug[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[..., hfcy:hfcy+hch, hfcx:hfcx+hcw]
+            im2, im1 = im2_aug, im1_aug
 
         return im1, im2
 
