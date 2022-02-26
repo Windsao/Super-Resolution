@@ -127,11 +127,13 @@ class Trainer():
             timer_model.tic()
 
             self.optimizer.zero_grad()
-
+            if self.args.data_aug == 'advcutmix':
+                aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
+                hr, lr = self.cutmix(hr.clone(), aug_img.clone(), self.args.prob, self.args.aug_alpha)
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
-            #self.drawImg(lr, hr, 1, 'mixup_out')
-            #exit()
+            # self.drawImg(lr, hr, 1, 'cutmix_out')
+            # exit()
             loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
 
             loss.backward()
@@ -351,7 +353,7 @@ class Trainer():
         # plt.axis('off')
         ax1 = plt.subplot(1,2,1)
         ax1.axis('off')
-        ax1.set_title('Model Output')
+        ax1.set_title('Input')
         ax1.imshow(p1)
         ax2 = plt.subplot(1,2,2)
         ax2.axis('off')

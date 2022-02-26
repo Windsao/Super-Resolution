@@ -1,2 +1,2 @@
-CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model RFDN --scale 2 --patch_size 128 --save debug --reset --distil --data_aug 'mixup'
+CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model RFDN --scale 2 --patch_size 128 --save debug --reset --distil --data_aug 'cutmix'
 # CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model EDSR --scale 2 --patch_size 192 --save debug --reset 
