@@ -1,4 +1,4 @@
 *.pyc
 *.txt
 *.png
-*.sh
+run.sh
