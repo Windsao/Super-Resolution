@@ -159,6 +159,7 @@ parser.add_argument('--data_aug', type=str, default='')
 parser.add_argument('--prob', type=float, default=1.0)
 parser.add_argument('--aug_alpha', type=float, default=0.1)
 parser.add_argument('--aug_beta', type=float, default=1.2)
+parser.add_argument('--mask_size', type=int, default=8)
 parser.add_argument('--teacher_model', type=str, default='EDSR_paper')
 
 args = parser.parse_args()

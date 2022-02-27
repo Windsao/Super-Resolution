@@ -6,9 +6,11 @@ import utility
 
 import torch
 import torch.nn.utils as utils
+import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import random
 
 class Trainer():
     def __init__(self, args, loader, my_model, my_loss, ckp, teacher=None):
@@ -49,7 +51,7 @@ class Trainer():
             elif self.args.data_aug == 'mixup':
                 hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutmixup':
-                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
@@ -113,29 +115,37 @@ class Trainer():
         timer_data, timer_model = utility.timer(), utility.timer()
         # TEMP
         self.loader_train.dataset.set_scale(0)
-        
+
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
             if self.args.data_aug == 'cutmix':
                 hr, lr = self.cutmix(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha)
             elif self.args.data_aug == 'mixup':
                 hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutmixup':
-                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
+            elif self.args.data_aug == 'cutout_mask':
+                high_mask, low_mask = self.cutout_mask(lr)
+            elif self.args.data_aug == 'cutmix_mask':
+                hr, lr, high_mask, low_mask = self.cutmix_mask(hr.clone(), lr.clone(), )
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
+            # self.drawInOut(lr, hr, 3, 'cutout_Mask_In')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
                 aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
                 hr, lr = self.cutmix(hr.clone(), aug_img.clone(), self.args.prob, self.args.aug_alpha)
+                
             t_sr = self.teacher(lr, 0)
             sr = self.model(lr, 0)
-            # self.drawImg(lr, hr, 1, 'cutmix_out')
+            if 'mask' in self.args.data_aug:
+                loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
+            else:
+                loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
+            # self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'cutout_Mask_Out')
             # exit()
-            loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
-
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -305,7 +315,6 @@ class Trainer():
         im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[rindex, :, hfcy:hfcy+hch, hfcx:hfcx+hcw]
 
         return im1, im2
-
     
     def cutmixup(
         self, im1, im2,
@@ -343,7 +352,40 @@ class Trainer():
 
         return im1, im2
 
-    def drawImg(self, im1, im2, index, name):
+    def cutout_mask(self, lr):
+        num_img = lr.size(0)
+        lrsize = lr.size(-1)
+        l_mask = torch.ones_like(lr).cuda()
+        for i in range(num_img):
+            mask_x = random.randint(0, lrsize - self.args.mask_size)
+            mask_y = random.randint(0, lrsize - self.args.mask_size)
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+        h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")
+        return h_mask, l_mask
+
+    def cutmix_mask(self, im1, im2):
+        h, w = im2.size(2), im2.size(3)
+        ch, cw = self.args.mask_size,  self.args.mask_size
+
+        fcy = np.random.randint(0, h-ch+1)
+        fcx = np.random.randint(0, w-cw+1)
+        tcy, tcx = fcy, fcx
+        rindex = torch.randperm(im2.size(0)).to(im2.device)
+        
+        scale = im1.size(2) // im2.size(2) # hr, lr
+
+        hch, hcw = ch*scale, cw*scale
+        hfcy, hfcx, htcy, htcx = fcy*scale, fcx*scale, tcy*scale, tcx*scale          
+        im2[..., tcy:tcy+ch, tcx:tcx+cw] = im2[rindex, :, fcy:fcy+ch, fcx:fcx+cw]
+        im1[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[rindex, :, hfcy:hfcy+hch, hfcx:hfcx+hcw]
+        
+        l_mask = torch.ones_like(im2).cuda()
+        l_mask[..., tcy:tcy+ch, tcx:tcx+cw] = 0
+        h_mask = F.interpolate(l_mask, scale_factor=scale, mode="nearest")
+
+        return im1, im2, h_mask, l_mask
+
+    def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
         p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
         p1 = (p1 - p1.min()) / (p1.max() - p1.min())
@@ -353,7 +395,25 @@ class Trainer():
         # plt.axis('off')
         ax1 = plt.subplot(1,2,1)
         ax1.axis('off')
-        ax1.set_title('Input')
+        ax1.set_title('Model Input')
+        ax1.imshow(p1)
+        ax2 = plt.subplot(1,2,2)
+        ax2.axis('off')
+        ax2.set_title('Ground Truth')
+        ax2.imshow(p2)
+        fig.savefig(name)
+
+    def drawOutOut(self, im1, im2, index, name):
+        p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
+        p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
+        p1 = (p1 - p1.min()) / (p1.max() - p1.min())
+        p2 = (p2 - p2.min()) / (p2.max() - p2.min())
+        
+        fig, ax = plt.subplots(1, 2)
+        # plt.axis('off')
+        ax1 = plt.subplot(1,2,1)
+        ax1.axis('off')
+        ax1.set_title('Model Output')
         ax1.imshow(p1)
         ax2 = plt.subplot(1,2,2)
         ax2.axis('off')
