@@ -10,8 +10,9 @@
 
 # Aug and distil script
 #HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_c0.05_rfdn_x4_500_$2 --reset --distil --data_aug 'cutmix' --epochs 500 --teacher_model 'EDSR' --aug_alpha 0.05 > test_$1.txt 2>&1 &
-HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_m1.2_rfdn_x4_500_$2 --reset --distil --data_aug 'mixup' --epochs 500 --teacher_model 'EDSR' --aug_beta 1.2 > test_$1.txt 2>&1 &
-#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_cm_rfdn_x4_500_$2 --reset --distil --data_aug 'cutmixup' --epochs 500 --teacher_model 'EDSR' --aug_beta 1.2 > test_$1.txt 2>&1 &
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_m1.2_rfdn_x4_500_$2 --reset --distil --data_aug 'mixup' --epochs 500 --teacher_model 'EDSR' --aug_beta 1.2 > test_$1.txt 2>&1 &
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_advcm0.1_rfdn_x4_500_$2 --reset --distil --data_aug 'advcutmix' --epochs 500 --teacher_model 'EDSR' --aug_alpha 0.1 > test_$1.txt 2>&1 &
+HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_cm_rfdn_x4_500_$2 --reset --distil --data_aug 'cutmixup' --epochs 500 --teacher_model 'EDSR' --aug_beta 1.2 --aug_alpha 0.1 > test_$1.txt 2>&1 &
 
 # mix method script
 #HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_c0.1_rfdn_x4_300_$2 --reset --distil --cutmix --teacher_model 'EDSR' --aug_alpha 0.1 > test_$1.txt 2>&1 &
@@ -19,4 +20,5 @@ HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --
 # Debug
 #HIP_VISIBLE_DEVICES=$1 python main.py --model EDSR --scale 2 --patch_size 96 --save debug --reset
 
-#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save debug --reset --distil --data_aug 'mixup' --epochs 500 --teacher_model 'EDSR' --aug_alpha 0.05 
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save debug --reset --distil --data_aug 'mixup' --epochs 500 --teacher_model 'EDSR' --aug_alpha 0.05 i
+#HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save EDSRmin_cm_rfdn_x4_500_$2 --reset --distil --data_aug 'cutmixup' --epochs 500 --teacher_model 'EDSR' --aug_beta 1.2 --aug_alpha 0.1

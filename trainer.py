@@ -49,7 +49,7 @@ class Trainer():
             elif self.args.data_aug == 'mixup':
                 hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutmixup':
-                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
@@ -120,7 +120,7 @@ class Trainer():
             elif self.args.data_aug == 'mixup':
                 hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutmixup':
-                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha, self.args.prob, self.args.aug_beta)
+                hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
