@@ -5,7 +5,6 @@ export MIOPEN_USER_DB_PATH=/scratch/yf22/
 
 # Baseline script
 #HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --save baseline_rfdn16_x4_500 --epochs 500 --reset > r16_$1.txt 2>&1 &
-HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --save baseline_rfdn16_x4_500 --epochs 500 --reset
 
 # Distil script
 #HIP_VISIBLE_DEVICES=$1 python main.py --model RFDN --scale 4 --patch_size 256 --beta $2 --save distil_EDSR_rfdn_x4_500_$2 --epochs 500 --reset --distil --teacher_model 'EDSR' > r16_$1.txt 2>&1 &
