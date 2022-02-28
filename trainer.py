@@ -138,7 +138,7 @@ class Trainer():
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
-            self.drawInOut(lr, hr, 3, 'saliency_Mask_In')
+            # self.drawInOut(lr, hr, 3, 'saliency_Mask_In')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
@@ -151,8 +151,8 @@ class Trainer():
                 loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
             else:
                 loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
-            self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'saliency_Mask_Out')
-            exit()
+            # self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'saliency_Mask_Out')
+            # exit()
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
