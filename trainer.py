@@ -126,7 +126,7 @@ class Trainer():
             elif self.args.data_aug == 'cutout_mask':
                 high_mask, low_mask = self.cutout_mask(lr)
             elif self.args.data_aug == 'cutmix_mask':
-                hr, lr, high_mask, low_mask = self.cutmix_mask(hr.clone(), lr.clone(), )
+                hr, lr, high_mask, low_mask = self.cutmix_mask(hr.clone(), lr.clone())
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
