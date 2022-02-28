@@ -127,11 +127,18 @@ class Trainer():
                 high_mask, low_mask = self.cutout_mask(lr)
             elif self.args.data_aug == 'cutmix_mask':
                 hr, lr, high_mask, low_mask = self.cutmix_mask(hr.clone(), lr.clone())
+            elif self.args.data_aug == 'saliency_mask':
+                lr, hr = self.prepare(lr, hr)
+                lr.requires_grad = True
+                sr = self.model(lr, 0)
+                loss = self.loss(sr, hr)
+                grad = torch.autograd.grad(loss, lr)[0]
+                hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
 
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
-            # self.drawInOut(lr, hr, 3, 'cutout_Mask_In')
+            self.drawInOut(lr, hr, 3, 'saliency_Mask_In')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
@@ -144,8 +151,8 @@ class Trainer():
                 loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
             else:
                 loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
-            # self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'cutout_Mask_Out')
-            # exit()
+            self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'saliency_Mask_Out')
+            exit()
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -384,6 +391,24 @@ class Trainer():
         h_mask = F.interpolate(l_mask, scale_factor=scale, mode="nearest")
 
         return im1, im2, h_mask, l_mask
+
+    def saliency_mask(self, grad, im1, im2):
+        filter = torch.ones([1, 3, self.args.mask_size, self.args.mask_size]).float().cuda()
+        grad = torch.abs(grad)
+        mask_grad = F.conv2d(grad, filter, stride=self.args.mask_size)
+        mask_grad = mask_grad.view(mask_grad.size(0), -1)
+        mask_index = mask_grad.argsort(descending=True)[:, :1]
+
+        l_mask = torch.ones_like(im2).cuda()
+        h, w = im2.size(2), im2.size(3)
+        patch_num_per_line = h // self.args.mask_size
+        for i in range(len(mask_index)):
+            mask_x = (mask_index[i] % patch_num_per_line) * self.args.mask_size
+            mask_y = (mask_index[i] // patch_num_per_line) * self.args.mask_size
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+        h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")    
+         
+        return im1.mul(h_mask), im2.mul(l_mask), h_mask, l_mask
 
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
