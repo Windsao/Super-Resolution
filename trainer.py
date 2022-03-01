@@ -397,7 +397,7 @@ class Trainer():
         grad = torch.abs(grad)
         mask_grad = F.conv2d(grad, filter, stride=self.args.mask_size)
         mask_grad = mask_grad.view(mask_grad.size(0), -1)
-        mask_index = mask_grad.argsort(descending=True)[:, :1]
+        mask_index = mask_grad.argsort(descending=False)[:, :1]
 
         l_mask = torch.ones_like(im2).cuda()
         h, w = im2.size(2), im2.size(3)
