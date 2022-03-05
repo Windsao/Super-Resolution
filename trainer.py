@@ -206,9 +206,6 @@ class Trainer():
 
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
-                    
-                    print(self.ckp.log[-1, idx_data, idx_scale])
-                    exit()
 
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
                 best = self.ckp.log.max(0)

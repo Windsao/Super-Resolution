@@ -35,13 +35,7 @@ def main():
                 _teacher.eval() 
             else:
                 _teacher = None
-            
-            loader = data.Data(args)
-            _loss = loss.Loss(args, checkpoint) if not args.test_only else None
-            test = Trainer(args, loader, _teacher, _loss, checkpoint, _teacher)
-            test.test()
-            exit()
-
+                
             args.model = temp['model']
             args.n_resblocks = temp['n_resblocks']
             args.n_feats = temp['n_feats']
