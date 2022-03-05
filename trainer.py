@@ -178,6 +178,7 @@ class Trainer():
         self.optimizer.schedule()
 
     def eval_train(self):
+        torch.set_grad_enabled(False)
         # self.loss.step()
         epoch = self.optimizer.get_last_epoch() + 1
         lr = self.optimizer.get_lr()
