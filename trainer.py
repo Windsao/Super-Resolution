@@ -197,7 +197,8 @@ class Trainer():
             lr, hr = self.prepare(lr, hr)
             sr = self.model(lr, 0)
             train_psnr.append(self.loss(sr, hr))
-        np.save('train_psnr.npy', np.array(train_psnr))
+        array = np.array(train_psnr)
+        np.save('train_psnr.npy', array)
         exit()
 
     def test(self):
