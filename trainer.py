@@ -196,9 +196,10 @@ class Trainer():
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
             lr, hr = self.prepare(lr, hr)
             sr = self.model(lr, 0)
-            train_psnr.append(self.loss(sr, hr))
+            train_psnr.append(self.loss(sr, hr).detach().cpu().numpy())
         array = np.array(train_psnr)
-        np.save('train_psnr.npy', array)
+        print(np.median(array))
+        np.save('train_loss.npy', array)
         exit()
 
     def test(self):
