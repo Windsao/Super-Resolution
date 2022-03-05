@@ -177,6 +177,28 @@ class Trainer():
         self.error_last = self.loss.log[-1, -1]
         self.optimizer.schedule()
 
+    def eval_train(self):
+        # self.loss.step()
+        epoch = self.optimizer.get_last_epoch() + 1
+        lr = self.optimizer.get_lr()
+
+        self.ckp.write_log(
+            '[Epoch {}]\tLearning rate: {:.2e}'.format(epoch, Decimal(lr))
+        )
+        self.loss.start_log()
+
+        timer_data, timer_model = utility.timer(), utility.timer()
+        # TEMP
+        self.loader_train.dataset.set_scale(0)
+        self.model.eval()
+        train_psnr = []
+        for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            lr, hr = self.prepare(lr, hr)
+            sr = self.model(lr, 0)
+            train_psnr.append(self.loss(sr, hr))
+        np.save('train_psnr.npy', np.array(train_psnr))
+        exit()
+
     def test(self):
         torch.set_grad_enabled(False)
 
