@@ -189,6 +189,7 @@ class Trainer():
 
         timer_test = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
+        psnr_list = []
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
@@ -206,10 +207,9 @@ class Trainer():
 
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
-                    
-                    print(self.ckp.log[-1, idx_data, idx_scale])
-                    exit()
-
+                    temp = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    psnr_list.append(temp)
+              
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
                 best = self.ckp.log.max(0)
                 self.ckp.write_log(
@@ -221,7 +221,8 @@ class Trainer():
                         best[1][idx_data, idx_scale] + 1
                     )
                 )
-
+        np.save('psnr.npy', np.array(psnr_list))
+        exit()
         self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
 
