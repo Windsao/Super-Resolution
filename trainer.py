@@ -111,6 +111,7 @@ class Trainer():
         )
         self.loss.start_log()
         self.model.train()
+        self.teacher.eval()
 
         timer_data, timer_model = utility.timer(), utility.timer()
         # TEMP
