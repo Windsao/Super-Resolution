@@ -151,7 +151,7 @@ class Trainer():
             if 'mask' in self.args.data_aug:
                 loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
             else:
-                if self.loss(sr, t_sr) < 28.43:
+                if self.loss(sr, t_sr) < 6.23:
                     loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
                 else:
                     loss = self.loss(sr, hr)
