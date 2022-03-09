@@ -135,11 +135,15 @@ class Trainer():
                 loss = self.loss(sr, hr)
                 grad = torch.autograd.grad(loss, lr)[0]
                 hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
-
+            elif self.args.data_aug == 'rgd_permute':
+                hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
+            elif self.args.data_aug == 'pixel_mask':
+                hr, lr, high_mask, low_mask = self.pixel_mask(hr.clone(), lr.clone(), self.args.aug_alpha)
+                
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
-            # self.drawInOut(lr, hr, 3, 'saliency_Mask_In')
+            self.drawInOut(lr, hr, 3, 'pix_in')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
@@ -155,8 +159,8 @@ class Trainer():
                     loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
                 else:
                     loss = self.loss(sr, hr)
-            # self.drawOutOut(t_sr.mul(high_mask), hr.mul(high_mask), 3, 'saliency_Mask_Out')
-            # exit()
+            self.drawOutOut(t_sr, hr, 3, 'pix_out')
+            exit()
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -413,6 +417,36 @@ class Trainer():
         h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")    
          
         return im1.mul(h_mask), im2.mul(l_mask), h_mask, l_mask
+    
+    def pixel_mask(self, im1, im2, ratio):
+        h, w = im2.size(2), im2.size(3)
+        scale = im1.size(2) // im2.size(2)
+        ph = np.random.randint(h, size=int(h * w * ratio))    
+        pw = np.random.randint(w, size=int(h * w * ratio))  
+        l_mask = torch.ones_like(im2)
+        l_mask[:, :, ph, pw] = 0
+        h_mask = F.interpolate(l_mask, scale_factor=scale, mode="nearest")
+
+        return im1.mul(h_mask), im2.mul(l_mask), h_mask.cuda(), l_mask.cuda()
+
+    def rgd_permute(self, im1, im2, ratio):
+        h, w = im2.size(2), im2.size(3)
+        scale = im1.size(2) // im2.size(2)
+        ph = np.random.randint(h, size=int(h * w * ratio))    
+        pw = np.random.randint(w, size=int(h * w * ratio))  
+        l_mask = torch.zeros_like(im2)
+        l_mask[:, :, ph, pw] = 1
+        perm = torch.randint_like(im2, low=0, high=100)
+        perm_mat = l_mask.mul(perm)
+        h_perm_mat = F.interpolate(perm_mat, scale_factor=scale, mode="nearest") 
+        
+        im2 += perm_mat
+        im1 += h_perm_mat
+        
+        im2 = torch.clamp(im2, 0, 255)
+        im1 = torch.clamp(im1, 0, 255)
+        
+        return im1, im2
 
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
@@ -431,6 +465,7 @@ class Trainer():
         ax2.set_title('Ground Truth')
         ax2.imshow(p2)
         fig.savefig(name)
+        plt.close()
 
     def drawOutOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
@@ -449,3 +484,4 @@ class Trainer():
         ax2.set_title('Ground Truth')
         ax2.imshow(p2)
         fig.savefig(name)
+        plt.close()
