@@ -7,6 +7,8 @@ import loss
 from option import args
 from trainer import Trainer
 
+from fvcore.nn import FlopCountAnalysis, parameter_count_table
+
 torch.manual_seed(args.seed)
 checkpoint = utility.checkpoint(args)
 
@@ -35,7 +37,7 @@ def main():
                 _teacher.eval() 
             else:
                 _teacher = None
-                
+
             args.model = temp['model']
             args.n_resblocks = temp['n_resblocks']
             args.n_feats = temp['n_feats']
@@ -44,6 +46,17 @@ def main():
             _model = model.Model(args, checkpoint)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
+
+            # tensor = (torch.rand(1, 3, 64, 64).cuda(), 0)
+            # flops = FlopCountAnalysis(_model, tensor)
+            # print("Student FLOPs: ", flops.total())
+            # print(parameter_count_table(_model))
+
+            # t_flops = FlopCountAnalysis(_teacher, tensor)
+            # print("Teacher FLOPs: ", t_flops.total())
+            # print(parameter_count_table(_teacher))
+            # exit()
+
             while not t.terminate():
                 if args.distil:
                     t.distillation()

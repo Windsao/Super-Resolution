@@ -1,2 +1,2 @@
-CUDA_VISIBLE_DEVICES=6,7 python main.py --model RFDN --scale 4 --patch_size 256 --save debug --reset --distil --data_aug 'pixel_mask'
+CUDA_VISIBLE_DEVICES=6,7 python main.py --model RFDN --scale 4 --patch_size 256 --save debug --reset --distil --data_aug 'pixel_mask' --teacher_model 'EDSR'
 # CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model EDSR --scale 2 --patch_size 192 --save debug --reset 
