@@ -143,7 +143,7 @@ class Trainer():
             lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
-            self.drawInOut(lr, hr, 3, 'pix_in')
+            #self.drawInOut(lr, hr, 3, 'pix_in')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
@@ -159,8 +159,8 @@ class Trainer():
                     loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
                 else:
                     loss = self.loss(sr, hr)
-            self.drawOutOut(t_sr, hr, 3, 'pix_out')
-            exit()
+            #self.drawOutOut(t_sr, hr, 3, 'pix_out')
+            #exit()
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
