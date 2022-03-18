@@ -154,6 +154,8 @@ parser.add_argument('--alpha', type=float, default=1)
 parser.add_argument('--iters', type=int, default=1)
 
 parser.add_argument('--distil', action='store_true')
+parser.add_argument('--partial_distill', action='store_true')
+parser.add_argument('--progress_distill', action='store_true')
 
 parser.add_argument('--data_aug', type=str, default='')
 parser.add_argument('--prob', type=float, default=1.0)

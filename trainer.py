@@ -149,16 +149,26 @@ class Trainer():
             if self.args.data_aug == 'advcutmix':
                 aug_img = self.attack_pgd(lr, hr, epsilon=self.args.eps, alpha=self.args.alpha, attack_iters=self.args.iters)
                 hr, lr = self.cutmix(hr.clone(), aug_img.clone(), self.args.prob, self.args.aug_alpha)
-                
-            t_sr = self.teacher(lr, 0)
-            sr = self.model(lr, 0)
-            if 'mask' in self.args.data_aug:
-                loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
+            if self.args.partial_distill:
+                high_mask, low_mask = self.cutout_mask(lr)
+                t_hr, t_lr = hr.mul(1 - high_mask), lr.mul(1 - low_mask)
+                s_hr, s_lr = hr.mul(high_mask), lr.mul(low_mask)
+                t_sr = self.teacher(t_lr, 0)
+                s_sr = self.model(s_lr, 0)
+                sr = self.model(t_lr, 0)
+                loss = (1 - self.args.beta) * self.loss(s_sr, s_hr) + self.args.beta * self.loss(sr, t_sr)
             else:
-                if self.loss(sr, t_sr) < 6.23:
-                    loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
+                t_sr = self.teacher(lr, 0)
+                sr = self.model(lr, 0)
+                if 'mask' in self.args.data_aug:
+                    loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
                 else:
-                    loss = self.loss(sr, hr)
+                    if self.args.progress_distill:
+                        self.args.beta = 1 / (1 + 0.02 * epoch) 
+                        loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
+                    else:
+                        loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
+                
             #self.drawOutOut(t_sr, hr, 3, 'pix_out')
             #exit()
             loss.backward()
