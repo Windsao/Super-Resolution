@@ -215,11 +215,22 @@ class Trainer():
         timer_test = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
         psnr_list = []
+        mask_psnr = []
+        ratio = 0.8
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
+                    
+                    h, w = lr.size(2), lr.size(3)
+                    scale = hr.size(2) // lr.size(2)
+                    ph = np.random.randint(h, size=int(h * w * ratio))    
+                    pw = np.random.randint(w, size=int(h * w * ratio))  
+                    l_mask = torch.ones_like(lr)
+                    l_mask[:, :, ph, pw] = 0
+                    h_mask = F.interpolate(l_mask, scale_factor=scale, mode="nearest")
+
                     sr = self.model(lr, idx_scale)
                     sr = utility.quantize(sr, self.args.rgb_range)
 
@@ -233,8 +244,10 @@ class Trainer():
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
                     temp = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    mask_temp = utility.calc_psnr(sr.mul(h_mask), hr.mul(h_mask), scale, self.args.rgb_range, dataset=d)
                     psnr_list.append(temp)
-              
+                    mask_psnr.append(mask_temp)
+
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
                 best = self.ckp.log.max(0)
                 self.ckp.write_log(
@@ -247,6 +260,7 @@ class Trainer():
                     )
                 )
         np.save('psnr.npy', np.array(psnr_list))
+        np.save('mask_psnr.npy', np.array(mask_psnr))
         exit()
         self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')

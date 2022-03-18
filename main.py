@@ -39,8 +39,8 @@ def main():
             loader = data.Data(args)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             test = Trainer(args, loader, _teacher, _loss, checkpoint, _teacher)
-            test.eval_train()
-            #test.test()
+            # test.eval_train()
+            test.test()
             exit()
 
             args.model = temp['model']
