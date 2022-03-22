@@ -6,11 +6,15 @@ import utility
 
 import torch
 import torch.nn.utils as utils
+import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
+
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
+import matplotlib.patches as patches
 
 class Trainer():
     def __init__(self, args, loader, my_model, my_loss, ckp, teacher=None):
@@ -216,7 +220,8 @@ class Trainer():
         if self.args.save_results: self.ckp.begin_background()
         psnr_list = []
         mask_psnr = []
-        ratio = 0.8
+        ratio = 0.2
+        count = 0
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
@@ -244,10 +249,59 @@ class Trainer():
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
                     temp = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
-                    mask_temp = utility.calc_psnr(sr.mul(h_mask), hr.mul(h_mask), scale, self.args.rgb_range, dataset=d)
+                    mask_temp = utility.calc_psnr(sr, hr, 100, self.args.rgb_range, dataset=d)
+                    sr_h, sr_w = sr.size(2), sr.size(3)
+                    
+                    patch_size = 128
+                    max_psnr = 0
+                    min_psnr = 9999
+                    psnr_map = []
+                    fft_map = []
+                    index_list = []
+                    index_list2 = []
+                    # self.drawOutOut(sr, hr, 0, 'eval')
+                    for i in np.arange(0, sr_h, patch_size):
+                        t_psnr = []
+                        t_fft = []
+                        for j in np.arange(0, sr_w, patch_size):
+                            p_sr = sr[..., i: i + patch_size, j: j + patch_size]
+                            p_hr = hr[..., i: i + patch_size, j: j + patch_size]
+                            p_psnr = utility.calc_psnr(p_sr, p_hr, 0, self.args.rgb_range, dataset=d)
+                            index_list.append((p_psnr, i, j))
+                            index_list2.append((self.SI_patch(p_sr).cpu(), i, j))
+                            if p_psnr > max_psnr:
+                                max_psnr = p_psnr
+                                # self.drawbox(sr, hr, 0, 'max_patch', i, j, patch_size)
+                            # t_fft.append(self.fft_patch(p_sr).cpu())
+                            t_fft.append(self.SI_patch(p_sr).cpu())
+                            t_psnr.append(p_psnr)
+                        psnr_map.append(t_psnr)
+                        fft_map.append(t_fft)
+                    index_list = np.array(index_list)
+                    index_list = index_list[index_list[:,0].argsort()]
+                    index_list = np.delete(index_list, 0, axis=1)
+
+                    index_list2 = np.array(index_list2)
+                    index_list2 = index_list2[index_list2[:,0].argsort()]
+                    index_list2 = np.delete(index_list2, 0, axis=1)
+                    
+                    box_fig = 'patch/box_' + str(count)
+                    self.drawMinMax(sr, hr, 0, box_fig, index_list[-1], index_list[0], index_list2[-1], index_list2[0], patch_size)
+                    psnr_map = np.array(psnr_map)
+                    fft_map = np.array(fft_map) * -1
+                    plt.subplot(1,2,1)
+                    plt.imshow(psnr_map)
+                    plt.subplot(1,2,2)
+                    plt.imshow(fft_map)
+                    map_fig = 'patch/map2_' + str(count)
+                    plt.savefig(map_fig)
+                    plt.close()
+                  
+                    if count == 10:
+                        exit()
                     psnr_list.append(temp)
                     mask_psnr.append(mask_temp)
-
+                    count += 1
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
                 best = self.ckp.log.max(0)
                 self.ckp.write_log(
@@ -366,11 +420,7 @@ class Trainer():
 
         return im1, im2
     
-    def cutmixup(
-        self, im1, im2,
-        mixup_prob=1.0, mixup_alpha=1.0,
-        cutmix_prob=1.0, cutmix_alpha=1.0
-    ):
+    def cutmixup(self, im1, im2, mixup_prob=1.0, mixup_alpha=1.0, cutmix_prob=1.0, cutmix_alpha=1.0):
         c = self._cutmix(im2, cutmix_prob, cutmix_alpha)
         if c is None:
             return im1, im2 
@@ -453,6 +503,40 @@ class Trainer():
          
         return im1.mul(h_mask), im2.mul(l_mask), h_mask, l_mask
 
+    def fft_patch(self, img):
+        transform = transforms.Grayscale()
+        img = transform(img)
+        p_size = img.size(-1)
+        f = torch.fft.fft2(img)
+        fshift = torch.fft.fftshift(f)
+        fimg = torch.log(torch.abs(fshift))
+        norm_f = (fimg - fimg.min()) / (fimg.max() - fimg.min())
+        high_pass = torch.ones_like(img)
+        high_pass[..., p_size // 8: 7 * p_size // 8, p_size // 8: 7 * p_size // 8] = 0
+        final_f = norm_f * high_pass
+        # print(final_f)
+        # exit()
+        return final_f.sum()
+
+    def SI_patch(self, img):
+        transform = transforms.Grayscale()
+        img = transform(img)
+        kernel_v = [[0, -1, 0],
+                    [0, 0, 0],
+                    [0, 1, 0]]
+        kernel_h = [[0, 0, 0],
+                    [-1, 0, 1],
+                    [0, 0, 0]]
+        kernel_h = torch.FloatTensor(kernel_h).unsqueeze(0).unsqueeze(0)
+        kernel_v = torch.FloatTensor(kernel_v).unsqueeze(0).unsqueeze(0)
+        weight_h = nn.Parameter(data=kernel_h, requires_grad=False).cuda()
+        weight_v = nn.Parameter(data=kernel_v, requires_grad=False).cuda()
+
+        x_v = F.conv2d(img, weight_v, padding=1)
+        x_h = F.conv2d(img, weight_h, padding=1)
+        SI = torch.sqrt(torch.pow(x_v, 2) + torch.pow(x_h, 2) + 1e-6)
+        return SI.mean()
+
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
         p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
@@ -470,6 +554,7 @@ class Trainer():
         ax2.set_title('Ground Truth')
         ax2.imshow(p2)
         fig.savefig(name)
+        plt.close()
 
     def drawOutOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
@@ -488,3 +573,58 @@ class Trainer():
         ax2.set_title('Ground Truth')
         ax2.imshow(p2)
         fig.savefig(name)
+        plt.close()
+
+    def drawbox(self, im1, im2, index, name, ind_h, ind_w, patch):
+        p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
+        p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
+        p1 = (p1 - p1.min()) / (p1.max() - p1.min())
+        p2 = (p2 - p2.min()) / (p2.max() - p2.min())
+
+
+        fig, ax = plt.subplots(1, 2)
+        # plt.axis('off')
+        ax1 = plt.subplot(1,2,1)
+        # ax1.axis('off')
+        ax1.set_title('Model Output')
+        ax1.imshow(p1)
+        rect = patches.Rectangle((ind_w, ind_h), patch, patch, linewidth=1, edgecolor='r', facecolor='none')
+        ax1.add_patch(rect)
+
+        ax2 = plt.subplot(1,2,2)
+        # ax2.axis('off')
+        ax2.set_title('Ground Truth')
+        ax2.imshow(p2)
+        rect = patches.Rectangle((ind_w, ind_h), patch, patch, linewidth=1, edgecolor='r', facecolor='none')
+        ax2.add_patch(rect)
+        fig.savefig(name)
+        plt.close()
+
+    def drawMinMax(self, im1, im2, index, name, max_list, min_list, max2_list, min2_list, patch):
+        p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
+        p2 = im2[index].detach().cpu().permute(1,2,0).numpy()
+        p1 = (p1 - p1.min()) / (p1.max() - p1.min())
+        p2 = (p2 - p2.min()) / (p2.max() - p2.min())
+
+
+        fig, ax = plt.subplots(1, 2)
+        # plt.axis('off')
+        ax1 = plt.subplot(1,2,1)
+        # ax1.axis('off')
+        ax1.set_title('PSNR_Indicator')
+        ax1.imshow(p1)
+        rect = patches.Rectangle((max_list[1], max_list[0]), patch, patch, linewidth=1, edgecolor='r', facecolor='none')
+        ax1.add_patch(rect)
+        rect = patches.Rectangle((min_list[1], min_list[0]), patch, patch, linewidth=1, edgecolor='b', facecolor='none')
+        ax1.add_patch(rect)
+
+        ax2 = plt.subplot(1,2,2)
+        # ax2.axis('off')
+        ax2.set_title('SI_Indicator')
+        ax2.imshow(p2)
+        rect = patches.Rectangle((max2_list[1], max2_list[0]), patch, patch, linewidth=1, edgecolor='r', facecolor='none')
+        ax2.add_patch(rect)
+        rect = patches.Rectangle((min2_list[1], min2_list[0]), patch, patch, linewidth=1, edgecolor='b', facecolor='none')
+        ax2.add_patch(rect)
+        fig.savefig(name)
+        plt.close()

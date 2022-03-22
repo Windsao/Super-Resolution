@@ -1,4 +1,5 @@
 *.pyc
 *.txt
 *.png
+patch/
 run.sh

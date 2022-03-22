@@ -6,7 +6,6 @@ from multiprocessing import Process
 from multiprocessing import Queue
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -175,7 +174,8 @@ def calc_psnr(sr, hr, scale, rgb_range, dataset=None):
     else:
         shave = scale + 6
 
-    valid = diff[..., shave:-shave, shave:-shave]
+    # valid = diff[..., shave:-shave, shave:-shave]
+    valid = diff
     mse = valid.pow(2).mean()
 
     return -10 * math.log10(mse)
