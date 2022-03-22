@@ -138,6 +138,8 @@ class Trainer():
                 loss = self.loss(sr, hr)
                 grad = torch.autograd.grad(loss, lr)[0]
                 hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
+            elif self.args.data_aug == 'SI_mask':
+                t = self.SI_mask(hr.clone(), lr.clone())
             elif self.args.data_aug == 'rgd_permute':
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
@@ -461,7 +463,7 @@ class Trainer():
         
         return im1, im2
     
-    def SI_mask(self, lr, hr):
+    def SI_mask(self, hr, lr):
         transform = transforms.Grayscale()
         g_lr = transform(lr)
         kernel_v = [[0, -1, 0],
