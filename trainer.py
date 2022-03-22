@@ -6,7 +6,10 @@ import utility
 
 import torch
 import torch.nn.utils as utils
+import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
+
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -457,6 +460,27 @@ class Trainer():
         im1 = torch.clamp(im1, 0, 255)
         
         return im1, im2
+    
+    def SI_mask(self, lr, hr):
+        transform = transforms.Grayscale()
+        g_lr = transform(lr)
+        kernel_v = [[0, -1, 0],
+                    [0, 0, 0],
+                    [0, 1, 0]]
+        kernel_h = [[0, 0, 0],
+                    [-1, 0, 1],
+                    [0, 0, 0]]
+        kernel_h = torch.FloatTensor(kernel_h).unsqueeze(0).unsqueeze(0)
+        kernel_v = torch.FloatTensor(kernel_v).unsqueeze(0).unsqueeze(0)
+        weight_h = nn.Parameter(data=kernel_h, requires_grad=False).cuda()
+        weight_v = nn.Parameter(data=kernel_v, requires_grad=False).cuda()
+
+        x_v = F.conv2d(g_lr, weight_v, padding=1)
+        x_h = F.conv2d(g_lr, weight_h, padding=1)
+        SI = torch.sqrt(torch.pow(x_v, 2) + torch.pow(x_h, 2) + 1e-6)
+        print(SI.size())
+        exit()
+        return SI.mean()
 
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
