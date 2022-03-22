@@ -121,6 +121,8 @@ class Trainer():
         self.loader_train.dataset.set_scale(0)
 
         for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            lr, hr = self.prepare(lr, hr)
+
             if self.args.data_aug == 'cutmix':
                 hr, lr = self.cutmix(hr.clone(), lr.clone(), self.args.prob, self.args.aug_alpha)
             elif self.args.data_aug == 'mixup':
@@ -139,13 +141,13 @@ class Trainer():
                 grad = torch.autograd.grad(loss, lr)[0]
                 hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
             elif self.args.data_aug == 'SI_mask':
-                t = self.SI_mask(hr.clone(), lr.clone())
+                high_mask, low_mask = self.SI_mask(hr.clone(), lr.clone())
             elif self.args.data_aug == 'rgd_permute':
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
                 hr, lr, high_mask, low_mask = self.pixel_mask(hr.clone(), lr.clone(), self.args.aug_alpha)
                 
-            lr, hr = self.prepare(lr, hr)
+            
             timer_data.hold()
             timer_model.tic()
             #self.drawInOut(lr, hr, 3, 'pix_in')
@@ -166,7 +168,9 @@ class Trainer():
                 t_sr = self.teacher(lr, 0)
                 sr = self.model(lr, 0)
                 if 'mask' in self.args.data_aug:
-                    loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
+                    ez_hr = t_sr.mul(high_mask) + hr.mul(1 - high_mask)
+                    loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, ez_hr)
+                    # loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
                 else:
                     if self.args.progress_distill:
                         self.args.beta = 1 / (1 + 0.02 * epoch) 
@@ -463,9 +467,9 @@ class Trainer():
         
         return im1, im2
     
-    def SI_mask(self, hr, lr):
+    def SI_mask(self, im1, im2):
         transform = transforms.Grayscale()
-        g_lr = transform(lr)
+        g_lr = transform(im2)
         kernel_v = [[0, -1, 0],
                     [0, 0, 0],
                     [0, 1, 0]]
@@ -480,9 +484,22 @@ class Trainer():
         x_v = F.conv2d(g_lr, weight_v, padding=1)
         x_h = F.conv2d(g_lr, weight_h, padding=1)
         SI = torch.sqrt(torch.pow(x_v, 2) + torch.pow(x_h, 2) + 1e-6)
-        print(SI.size())
-        exit()
-        return SI.mean()
+        
+        mask = torch.ones([1, 1, self.args.mask_size, self.args.mask_size]).float().cuda()
+        mask_SI = F.conv2d(SI, mask, stride=self.args.mask_size) / (self.args.mask_size * self.args.mask_size)
+        mask_SI = mask_SI.view(mask_SI.size(0), -1)
+        mask_index = mask_SI.argsort(descending=True)[:, :1]
+        
+        l_mask = torch.zeros_like(im2).cuda()
+        h, w = im2.size(2), im2.size(3)
+        patch_num_per_line = h // self.args.mask_size
+        for i in range(len(mask_index)):
+            mask_x = (mask_index[i] % patch_num_per_line) * self.args.mask_size
+            mask_y = (mask_index[i] // patch_num_per_line) * self.args.mask_size
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
+        h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")  
+
+        return h_mask.cuda(), l_mask.cuda()
 
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
