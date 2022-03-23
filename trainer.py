@@ -146,8 +146,7 @@ class Trainer():
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
                 hr, lr, high_mask, low_mask = self.pixel_mask(hr.clone(), lr.clone(), self.args.aug_alpha)
-                
-            
+                 
             timer_data.hold()
             timer_model.tic()
             #self.drawInOut(lr, hr, 3, 'pix_in')
@@ -389,11 +388,11 @@ class Trainer():
     def cutout_mask(self, lr):
         num_img = lr.size(0)
         lrsize = lr.size(-1)
-        l_mask = torch.ones_like(lr).cuda()
+        l_mask = torch.zeros_like(lr).cuda()
         for i in range(num_img):
             mask_x = random.randint(0, lrsize - self.args.mask_size)
             mask_y = random.randint(0, lrsize - self.args.mask_size)
-            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
         h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")
         return h_mask, l_mask
 
@@ -490,13 +489,13 @@ class Trainer():
         mask_SI = mask_SI.view(mask_SI.size(0), -1)
         mask_index = mask_SI.argsort(descending=True)[:, :1]
         
-        l_mask = torch.zeros_like(im2).cuda()
+        l_mask = torch.ones_like(im2).cuda()
         h, w = im2.size(2), im2.size(3)
         patch_num_per_line = h // self.args.mask_size
         for i in range(len(mask_index)):
             mask_x = (mask_index[i] % patch_num_per_line) * self.args.mask_size
             mask_y = (mask_index[i] // patch_num_per_line) * self.args.mask_size
-            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
         h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")  
 
         return h_mask.cuda(), l_mask.cuda()
