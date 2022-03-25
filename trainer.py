@@ -489,13 +489,15 @@ class Trainer():
         mask_SI = mask_SI.view(mask_SI.size(0), -1)
         mask_index = mask_SI.argsort(descending=True)[:, :1]
         
-        l_mask = torch.ones_like(im2).cuda()
+        #l_mask = torch.ones_like(im2).cuda()
+        l_mask = torch.zeros_like(im2).cuda()
         h, w = im2.size(2), im2.size(3)
         patch_num_per_line = h // self.args.mask_size
         for i in range(len(mask_index)):
             mask_x = (mask_index[i] % patch_num_per_line) * self.args.mask_size
             mask_y = (mask_index[i] // patch_num_per_line) * self.args.mask_size
-            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+            #l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+            l_mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
         h_mask = F.interpolate(l_mask, scale_factor=int(self.scale[0]), mode="nearest")  
 
         return h_mask.cuda(), l_mask.cuda()
