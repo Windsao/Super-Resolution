@@ -215,6 +215,7 @@ class Trainer():
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
+        self.teacher.eval()
 
         timer_test = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
@@ -228,16 +229,11 @@ class Trainer():
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
                     
-                    h, w = lr.size(2), lr.size(3)
-                    scale = hr.size(2) // lr.size(2)
-                    ph = np.random.randint(h, size=int(h * w * ratio))    
-                    pw = np.random.randint(w, size=int(h * w * ratio))  
-                    l_mask = torch.ones_like(lr)
-                    l_mask[:, :, ph, pw] = 0
-                    h_mask = F.interpolate(l_mask, scale_factor=scale, mode="nearest")
-
                     sr = self.model(lr, idx_scale)
                     sr = utility.quantize(sr, self.args.rgb_range)
+
+                    # t_sr = self.teacher(lr, idx_scale)
+                    # t_sr = utility.quantize(t_sr, self.args.rgb_range)
 
                     save_list = [sr]
                     self.ckp.log[-1, idx_data, idx_scale] += utility.calc_psnr(
@@ -286,17 +282,21 @@ class Trainer():
                     index_list2 = np.delete(index_list2, 0, axis=1)
                     
                     box_fig = 'patch/box_' + str(count)
+                    save_psnr = 'patch/psnr_' + str(count)
                     self.drawMinMax(sr, hr, 0, box_fig, index_list[-1], index_list[0], index_list2[-1], index_list2[0], patch_size)
                     psnr_map = np.array(psnr_map)
                     fft_map = np.array(fft_map) * -1
-                    plt.subplot(1,2,1)
+                    # plt.subplot(1,2,1)
                     plt.imshow(psnr_map)
-                    plt.subplot(1,2,2)
-                    plt.imshow(fft_map)
+                    for y in range(psnr_map.shape[0]):
+                        for x in range(psnr_map.shape[1]):
+                            plt.text(x, y, '%.2f' % psnr_map[y, x], ha="center", va="center", color="black", fontsize=7)
+                    # plt.subplot(1,2,2)
+                    # plt.imshow(fft_map)
                     map_fig = 'patch/map2_' + str(count)
                     plt.savefig(map_fig)
                     plt.close()
-                  
+                    self.drawPSNR(sr, psnr_map, 0, save_psnr, index_list[-1], index_list[0], patch_size)
                     if count == 10:
                         exit()
                     psnr_list.append(temp)
@@ -626,5 +626,27 @@ class Trainer():
         ax2.add_patch(rect)
         rect = patches.Rectangle((min2_list[1], min2_list[0]), patch, patch, linewidth=1, edgecolor='b', facecolor='none')
         ax2.add_patch(rect)
+        fig.savefig(name)
+        plt.close()
+
+    def drawPSNR(self, im1, psnr_map, index, name, max_list, min_list, patch):
+        p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
+        p1 = (p1 - p1.min()) / (p1.max() - p1.min())
+
+        fig, ax = plt.subplots(1, 2)
+        # plt.axis('off')
+        ax1 = plt.subplot(1,2,1)
+        # ax1.axis('off')
+        ax1.set_title('PSNR_Indicator')
+        ax1.imshow(p1)
+        rect = patches.Rectangle((max_list[1], max_list[0]), patch, patch, linewidth=1, edgecolor='r', facecolor='none')
+        ax1.add_patch(rect)
+        rect = patches.Rectangle((min_list[1], min_list[0]), patch, patch, linewidth=1, edgecolor='b', facecolor='none')
+        ax1.add_patch(rect)
+
+        ax2 = plt.subplot(1,2,2)
+        # ax2.axis('off')
+        ax2.set_title('PSNR_Map')
+        ax2.imshow(psnr_map)
         fig.savefig(name)
         plt.close()

@@ -28,6 +28,7 @@ def main():
                     args.res_scale = 0.1
                     _teacher = model.Model(args, checkpoint)
                     _teacher.myload('../SR_ckpt/EDSR_x4.pt')
+                    print('load Large Model')
                 else:
                     _teacher = model.Model(args, checkpoint)
                     # _teacher.myload('../experiment/5_1_3/model/model_best.pt') 
@@ -38,10 +39,10 @@ def main():
             
             loader = data.Data(args)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
-            test = Trainer(args, loader, _teacher, _loss, checkpoint, _teacher)
+            # test = Trainer(args, loader, _teacher, _loss, checkpoint, _teacher)
             # test.eval_train()
-            test.test()
-            exit()
+            # test.test()
+            # exit()
 
             args.model = temp['model']
             args.n_resblocks = temp['n_resblocks']
@@ -49,8 +50,13 @@ def main():
             args.res_scale = temp['res_scale']
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
+            _model.myload('../experiment/baseline_rfdn32_x4_500/model/model_best.pt')
+            # _model.myload('../experiment/baseline2_EDSR_x4/model/model_best.pt')
+            _model.eval()
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
+            t.test()
+            exit()
             while not t.terminate():
                 if args.distil:
                     t.distillation()

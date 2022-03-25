@@ -8,7 +8,7 @@ def make_model(args, parent=False):
 
 
 class RFDN(nn.Module):
-    def __init__(self, args, in_nc=3, nf=50, num_modules=4, out_nc=3, upscale=4):
+    def __init__(self, args, in_nc=3, nf=32, num_modules=4, out_nc=3, upscale=4):
         super(RFDN, self).__init__()
 
         self.fea_conv = B.conv_layer(in_nc, nf, kernel_size=3)
