@@ -21,12 +21,12 @@ parser.add_argument('--seed', type=int, default=1,
 # Data specifications
 # parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
                     # help='dataset directory')
-# parser.add_argument('--dir_data', type=str, default='/data1/',
-#                   help='dataset directory') # gpu7
+parser.add_argument('--dir_data', type=str, default='/data1/',
+                  help='dataset directory') # gpu7
 # parser.add_argument('--dir_data', type=str, default='/home/sw99',
 #                   help='dataset directory') # gpu6
-parser.add_argument('--dir_data', type=str, default='/data2/',
-                  help='dataset directory') # gpu5
+# parser.add_argument('--dir_data', type=str, default='/data2/',
+#                   help='dataset directory') # gpu5
 
 parser.add_argument('--dir_demo', type=str, default='../test',
                     help='demo image directory')
@@ -167,6 +167,9 @@ parser.add_argument('--aug_alpha', type=float, default=0.1)
 parser.add_argument('--aug_beta', type=float, default=1.2)
 parser.add_argument('--mask_size', type=int, default=8)
 parser.add_argument('--teacher_model', type=str, default='EDSR_paper')
+
+parser.add_argument('--resume_dir', type=str, default='')
+
 
 args = parser.parse_args()
 template.set_template(args)

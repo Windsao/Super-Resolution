@@ -31,6 +31,10 @@ class Trainer():
         if self.args.load != '':
             self.optimizer.load(ckp.dir, epoch=len(ckp.log))
 
+        if self.args.resume_dir != '':
+            opt_path = os.path.join(args.resume_dir, 'optimizer.pt')
+            self.optimizer.load(args.resume_dir)
+   
         self.error_last = 1e8
 
     def train(self):

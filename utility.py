@@ -89,6 +89,7 @@ class checkpoint():
 
         self.plot_psnr(epoch)
         trainer.optimizer.save(self.dir)
+        trainer.optimizer.save_scheduler(self.dir)
         torch.save(self.log, self.get_path('psnr_log.pt'))
 
     def add_log(self, log):
@@ -214,10 +215,19 @@ def make_optimizer(args, target):
         def save(self, save_dir):
             torch.save(self.state_dict(), self.get_dir(save_dir))
 
+        def save_scheduler(self, save_dir):
+            sch_path = os.path.join(save_dir, 'scheduler.pt')
+            torch.save(self.scheduler.state_dict(), sch_path)
+
         def load(self, load_dir, epoch=1):
-            self.load_state_dict(torch.load(self.get_dir(load_dir)))
-            if epoch > 1:
-                for _ in range(epoch): self.scheduler.step()
+            # self.load_state_dict(torch.load(self.get_dir(load_dir)))
+            opt_path = os.path.join(args.resume_dir, 'optimizer.pt')
+            sch_path = os.path.join(args.resume_dir, 'scheduler.pt')
+            self.load_state_dict(torch.load(opt_path))
+            self.scheduler.load_state_dict(torch.load(sch_path))
+            # if epoch > 1:
+            #     for _ in range(epoch):
+            #         self.scheduler.step()
 
         def get_dir(self, dir_path):
             return os.path.join(dir_path, 'optimizer.pt')

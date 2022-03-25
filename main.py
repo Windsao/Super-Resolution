@@ -4,6 +4,7 @@ import utility
 import data
 import model
 import loss
+import os
 from option import args
 from trainer import Trainer
 
@@ -44,6 +45,11 @@ def main():
             args.res_scale = temp['res_scale']
             loader = data.Data(args)
             _model = model.Model(args, checkpoint)
+            
+            if args.resume_dir != '':
+                path = os.path.join(args.resume_dir, 'model/model_best.pt')
+                _model.myload(path)
+
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
 
@@ -56,7 +62,7 @@ def main():
             # print("Teacher FLOPs: ", t_flops.total())
             # print(parameter_count_table(_teacher))
             # exit()
-
+    
             while not t.terminate():
                 if args.distil:
                     t.distillation()
