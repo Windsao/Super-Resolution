@@ -1,2 +1,3 @@
-CUDA_VISIBLE_DEVICES=6,7 python main.py --model RFDN --scale 4 --patch_size 256 --save debug --reset --distil --data_aug 'SI_mask' --teacher_model 'EDSR'
+# CUDA_VISIBLE_DEVICES=6,7 python main.py --model RFDN --scale 4 --patch_size 256 --save debug --reset --distil --data_aug 'SI_mask' --teacher_model 'EDSR'
+CUDA_VISIBLE_DEVICES=0 python main.py --model RFDN --scale 4 --patch_size 256 --beta $1 --save distil_EDSR_rfdn32_x4_$1 --epochs 500 --reset --distil --teacher_model 'EDSR_paper'
 # CUDA_VISIBLE_DEVICES=0,1,2 python main.py --model EDSR --scale 2 --patch_size 192 --save debug --reset --data_aug 'pixel_mask'

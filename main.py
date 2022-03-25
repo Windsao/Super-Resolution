@@ -30,9 +30,9 @@ def main():
                     args.res_scale = 0.1
                     _teacher = model.Model(args, checkpoint)
                     _teacher.myload('../SR_ckpt/EDSR_x4.pt')
+                    print('load large EDSR teacher!')
                 else:
                     _teacher = model.Model(args, checkpoint)
-                    # _teacher.myload('../experiment/5_1_3/model/model_best.pt') 
                     _teacher.myload('../experiment/baseline2_EDSR_x4/model/model_best.pt')
                 _teacher.eval() 
             else:
