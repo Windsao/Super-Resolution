@@ -66,6 +66,11 @@ class Loss(nn.modules.loss._Loss):
 
         if args.load != '': self.load(ckp.dir, cpu=args.cpu)
 
+        if args.resume_dir != '':
+            loss_path = os.path.join(args.resume_dir, 'loss_log.pt')
+            self.log = torch.load(loss_path)
+            print('Loading loss log......')
+
     def forward(self, sr, hr):
         losses = []
         for i, l in enumerate(self.loss):

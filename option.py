@@ -21,12 +21,12 @@ parser.add_argument('--seed', type=int, default=1,
 # Data specifications
 # parser.add_argument('--dir_data', type=str, default='/scratch/yf22/',
                     # help='dataset directory')
-parser.add_argument('--dir_data', type=str, default='/data1/',
-                  help='dataset directory') # gpu7
+# parser.add_argument('--dir_data', type=str, default='/data1/',
+                    # help='dataset directory') # gpu7
 # parser.add_argument('--dir_data', type=str, default='/home/sw99',
 #                   help='dataset directory') # gpu6
-# parser.add_argument('--dir_data', type=str, default='/data2/',
-#                   help='dataset directory') # gpu5
+parser.add_argument('--dir_data', type=str, default='/data2/',
+                  help='dataset directory') # gpu5
 
 parser.add_argument('--dir_demo', type=str, default='../test',
                     help='demo image directory')

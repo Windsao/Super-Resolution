@@ -59,6 +59,10 @@ class checkpoint():
                 print('Continue from epoch {}...'.format(len(self.log)))
             else:
                 args.load = ''
+        if self.args.resume_dir != '':
+            log_path = os.path.join(self.args.resume_dir, 'psnr_log.pt')
+            self.log = torch.load(log_path)
+            print('Loading PSNR log......')
 
         if args.reset:
             os.system('rm -rf ' + self.dir)
