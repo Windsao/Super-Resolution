@@ -151,7 +151,7 @@ parser.add_argument('--save_gt', action='store_true',
                     help='save low-resolution and high-resolution images together')
 
 # Aug param
-parser.add_argument('--beta', type=float, default='0.2')
+parser.add_argument('--beta', type=float, default='0.3')
 parser.add_argument('--start_aug', type=int, default=300)
 parser.add_argument('--eps', type=float, default=1)
 parser.add_argument('--alpha', type=float, default=1)
@@ -167,6 +167,7 @@ parser.add_argument('--aug_alpha', type=float, default=0.1)
 parser.add_argument('--aug_beta', type=float, default=1.2)
 parser.add_argument('--mask_size', type=int, default=8)
 parser.add_argument('--teacher_model', type=str, default='EDSR_paper')
+parser.add_argument('--t_ratio', type=float, default=0.3, help='ratio from teacher output') 
 
 parser.add_argument('--resume_dir', type=str, default='')
 

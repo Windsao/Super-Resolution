@@ -144,8 +144,10 @@ class Trainer():
                 loss = self.loss(sr, hr)
                 grad = torch.autograd.grad(loss, lr)[0]
                 hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
+            elif self.args.data_aug == 'rand_mask':
+                high_mask = self.SI_mask(hr.clone(), self.args.t_ratio)
             elif self.args.data_aug == 'SI_mask':
-                high_mask = self.SI_mask(hr.clone(), 0.3, use_high=False)
+                high_mask = self.SI_mask(hr.clone(), self.args.t_ratio, use_high=False)
             elif self.args.data_aug == 'rgd_permute':
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
@@ -469,7 +471,17 @@ class Trainer():
         im1 = torch.clamp(im1, 0, 255)
         
         return im1, im2
-    
+
+    def rand_mask(self, hr, ratio): 
+        mask = torch.zeros([1, 1, self.args.mask_size * self.args.mask_size])
+        # % ratio use teacher part
+        pick = np.random.randint(0, self.args.mask_size * self.args.mask_size, (self.args.mask_size * self.args.mask_size * ratio,))
+        mask[..., pick] = 1
+        mask = mask.reshape(1, 1, self.args.mask_size, self.args.mask_size).cuda()
+        h, w = hr.size(2), hr.size(3)
+        mask = F.upsample(mask, scale_factor=int(h // self.args.mask_size), mode="nearest") 
+        return mask
+
     def SI_mask(self, hr, ratio, use_high=True):
         transform = transforms.Grayscale()
         g_lr = transform(hr)
