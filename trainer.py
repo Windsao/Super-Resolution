@@ -145,7 +145,7 @@ class Trainer():
                 grad = torch.autograd.grad(loss, lr)[0]
                 hr, lr, high_mask, low_mask = self.saliency_mask(grad, hr.clone(), lr.clone())
             elif self.args.data_aug == 'SI_mask':
-                high_mask = self.SI_mask(hr.clone(), 0.3, use_high=True)
+                high_mask = self.SI_mask(hr.clone(), 0.3, use_high=False)
             elif self.args.data_aug == 'rgd_permute':
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
@@ -494,9 +494,9 @@ class Trainer():
         select_patch = int(mask_SI.size(-1) * ratio)
         mask_index = mask_SI.argsort(descending=True)[:, :select_patch] #select k-th highest 
         if use_high:
-            mask = torch.zeros_like(hr).cuda()
+            mask = torch.zeros_like(hr)
         else:
-            mask = torch.ones_like(hr).cuda()
+            mask = torch.ones_like(hr)
         h, w = hr.size(2), hr.size(3)
         patch_num_per_line = h // self.args.mask_size
         for i in range(len(mask_index)):
@@ -507,7 +507,7 @@ class Trainer():
                     mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
                 else:
                     mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
-        return mask
+        return mask.cuda()
 
     def drawInOut(self, im1, im2, index, name):
         p1 = im1[index].detach().cpu().permute(1,2,0).numpy()
