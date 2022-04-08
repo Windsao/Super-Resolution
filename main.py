@@ -50,7 +50,7 @@ def main():
                 path = os.path.join(args.resume_dir, 'model/model_best.pt')
                 _model.myload(path)
 
-            _loss = loss.Loss(args, checkpoint) if not args.test_only else None
+            _loss = loss.Loss(args, checkpoint) if not args.test_only else None   
             t = Trainer(args, loader, _model, _loss, checkpoint, _teacher)
 
             # tensor = (torch.rand(1, 3, 64, 64).cuda(), 0)

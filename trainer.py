@@ -147,7 +147,7 @@ class Trainer():
             elif self.args.data_aug == 'rand_mask':
                 high_mask = self.SI_mask(hr.clone(), self.args.t_ratio)
             elif self.args.data_aug == 'SI_mask':
-                high_mask = self.SI_mask(hr.clone(), self.args.t_ratio, use_high=False)
+                high_mask = self.SI_mask(hr.clone(), ratio=self.args.t_ratio, use_high=self.args.use_high)
             elif self.args.data_aug == 'rgd_permute':
                 hr, lr = self.rgd_permute(hr.clone(), lr.clone(), self.args.aug_alpha)
             elif self.args.data_aug == 'pixel_mask':
@@ -155,7 +155,7 @@ class Trainer():
                  
             timer_data.hold()
             timer_model.tic()
-            #self.drawInOut(lr, hr, 3, 'pix_in')
+            # self.drawInOut(lr, hr, 1, 'SI_in')
 
             self.optimizer.zero_grad()
             if self.args.data_aug == 'advcutmix':
@@ -174,6 +174,7 @@ class Trainer():
                 sr = self.model(lr, 0)
                 if 'mask' in self.args.data_aug:
                     ez_hr = t_sr.mul(high_mask) + hr.mul(1 - high_mask)
+                    # self.drawInOut(t_sr.mul(high_mask), hr.mul(1 - high_mask), 1, 'SI_label')
                     loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, ez_hr)
                     # loss = (1 - self.args.beta) * self.loss(sr.mul(high_mask), hr.mul(high_mask)) + self.args.beta * self.loss(sr.mul(high_mask), t_sr.mul(high_mask))
                 else:
@@ -183,8 +184,8 @@ class Trainer():
                     else:
                         loss = (1 - self.args.beta) * self.loss(sr, hr) + self.args.beta * self.loss(sr, t_sr)
                 
-            #self.drawOutOut(t_sr, hr, 3, 'pix_out')
-            #exit()
+            # self.drawOutOut(sr, ez_hr, 1, 'SI_out')
+            # exit()
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -500,25 +501,27 @@ class Trainer():
         x_h = F.conv2d(g_lr, weight_h, padding=1)
         SI = torch.sqrt(torch.pow(x_v, 2) + torch.pow(x_h, 2) + 1e-6)
         
+        h, w = hr.size(2), hr.size(3)
+        scale = hr.size(3) // self.args.mask_size 
         mask = torch.ones([1, 1, self.args.mask_size, self.args.mask_size]).float().cuda()
         mask_SI = F.conv2d(SI, mask, stride=self.args.mask_size) / (self.args.mask_size * self.args.mask_size)
         mask_SI = mask_SI.view(mask_SI.size(0), -1)
         select_patch = int(mask_SI.size(-1) * ratio)
-        mask_index = mask_SI.argsort(descending=True)[:, :select_patch] #select k-th highest 
-        if use_high:
-            mask = torch.zeros_like(hr)
-        else:
-            mask = torch.ones_like(hr)
-        h, w = hr.size(2), hr.size(3)
-        patch_num_per_line = h // self.args.mask_size
-        for i in range(len(mask_index)):
-            for j in mask_index[i]:
-                mask_x = (j % patch_num_per_line) * self.args.mask_size
-                mask_y = (j // patch_num_per_line) * self.args.mask_size
-                if use_high:
-                    mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
-                else:
-                    mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 0
+        thres = torch.topk(mask_SI, select_patch, largest=use_high)[0][:,-1]
+        mask = mask_SI > thres[:, None]
+        mask = mask.reshape(-1, 1, scale, scale).float()
+        mask = F.upsample(mask, scale_factor=self.args.mask_size, mode="nearest") 
+        
+        # mask_index = mask_SI.argsort(descending=use_high)[:, :select_patch] #select k-th highest 
+        # mask = torch.zeros_like(hr)
+        
+        # patch_num_per_line = h // self.args.mask_size
+        # for i in range(len(mask_index)):
+        #     for j in mask_index[i]:
+        #         mask_x = (j % patch_num_per_line) * self.args.mask_size
+        #         mask_y = (j // patch_num_per_line) * self.args.mask_size
+        #         mask[i, : , mask_y: mask_y + self.args.mask_size, mask_x: mask_x + self.args.mask_size] = 1
+
         return mask.cuda()
 
     def drawInOut(self, im1, im2, index, name):
