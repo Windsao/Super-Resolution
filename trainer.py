@@ -134,9 +134,7 @@ class Trainer():
             elif self.args.data_aug == 'cutmixup':
                 hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
             elif self.args.data_aug == 'cutblur':
-                scale = hr.size(2) // lr.size(2)
-                inter_lr = F.interpolate(lr, scale_factor=scale, mode="nearest").cuda()
-                hr, lr = self.cutblur(hr.clone(), inter_lr, self.args.prob, self.args.aug_beta)
+                hr, lr = self.cutblur(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutout_mask':
                 high_mask, low_mask = self.cutout_mask(lr)
             elif self.args.data_aug == 'cutmix_mask':
@@ -398,7 +396,9 @@ class Trainer():
 
     def cutblur(self, im1, im2, prob=1.0, alpha=1.0):
         if im1.size() != im2.size():
-            raise ValueError("im1 and im2 have to be the same resolution.")
+            scale = im1.size(2) // im2.size(2)
+            inter_lr = F.interpolate(im2, scale_factor=scale, mode="nearest").cuda()
+            # raise ValueError("im1 and im2 have to be the same resolution.")
 
         if alpha <= 0 or np.random.rand(1) >= prob:
             return im1, im2
@@ -411,13 +411,14 @@ class Trainer():
         cx = np.random.randint(0, w-cw+1)
 
         # apply CutBlur to inside or outside
-        if np.random.random() > 0.5:
-            im2[..., cy:cy+ch, cx:cx+cw] = im1[..., cy:cy+ch, cx:cx+cw]
-        else:
-            im2_aug = im1.clone()
-            im2_aug[..., cy:cy+ch, cx:cx+cw] = im2[..., cy:cy+ch, cx:cx+cw]
-            im2 = im2_aug
-
+        # if np.random.random() > 0.5:
+        #     im2[..., cy:cy+ch, cx:cx+cw] = im1[..., cy:cy+ch, cx:cx+cw]
+        # else:
+        #     im2_aug = im1.clone()
+        #     im2_aug[..., cy:cy+ch, cx:cx+cw] = im2[..., cy:cy+ch, cx:cx+cw]
+        #     im2 = im2_aug
+        im1[..., cy:cy+ch, cx:cx+cw] = inter_lr[..., cy:cy+ch, cx:cx+cw]
+        
         return im1, im2
 
     def cutout_mask(self, lr):
