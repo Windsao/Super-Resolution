@@ -133,6 +133,10 @@ class Trainer():
                 hr, lr = self.mixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutmixup':
                 hr, lr = self.cutmixup(hr.clone(), lr.clone(), self.args.prob, self.args.aug_beta, self.args.prob, self.args.aug_alpha)
+            elif self.args.data_aug == 'cutblur':
+                scale = hr.size(2) // lr.size(2)
+                inter_lr = F.interpolate(lr, scale_factor=scale, mode="nearest").cuda()
+                hr, lr = self.cutblur(hr.clone(), inter_lr, self.args.prob, self.args.aug_beta)
             elif self.args.data_aug == 'cutout_mask':
                 high_mask, low_mask = self.cutout_mask(lr)
             elif self.args.data_aug == 'cutmix_mask':
@@ -389,6 +393,30 @@ class Trainer():
             im2_aug[..., tcy:tcy+ch, tcx:tcx+cw] = im2[..., fcy:fcy+ch, fcx:fcx+cw]
             im1_aug[..., htcy:htcy+hch, htcx:htcx+hcw] = im1[..., hfcy:hfcy+hch, hfcx:hfcx+hcw]
             im2, im1 = im2_aug, im1_aug
+
+        return im1, im2
+
+    def cutblur(self, im1, im2, prob=1.0, alpha=1.0):
+        if im1.size() != im2.size():
+            raise ValueError("im1 and im2 have to be the same resolution.")
+
+        if alpha <= 0 or np.random.rand(1) >= prob:
+            return im1, im2
+
+        cut_ratio = np.random.randn() * 0.01 + alpha
+
+        h, w = im1.size(2), im1.size(3)
+        ch, cw = np.int(h*cut_ratio), np.int(w*cut_ratio)
+        cy = np.random.randint(0, h-ch+1)
+        cx = np.random.randint(0, w-cw+1)
+
+        # apply CutBlur to inside or outside
+        if np.random.random() > 0.5:
+            im2[..., cy:cy+ch, cx:cx+cw] = im1[..., cy:cy+ch, cx:cx+cw]
+        else:
+            im2_aug = im1.clone()
+            im2_aug[..., cy:cy+ch, cx:cx+cw] = im2[..., cy:cy+ch, cx:cx+cw]
+            im2 = im2_aug
 
         return im1, im2
 
